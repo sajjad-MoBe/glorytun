@@ -55,14 +55,14 @@ gt_path_conf(struct ctl_msg *res)
         gt_torate(rx, sizeof(rx), res->path.conf.rx_max_rate * 8))
         return;
 
-    printf("path dev %s addr %s port %"PRIu16" to addr %s port %"PRIu16" "
-           "set %s pref %u beat %s losslimit %u%% rate %s tx %s rx %s mark %"PRIu32"\n",
-            res->tun_name, local, gt_get_port(&res->path.conf.local),
+    printf("path dev %s addr %s to addr %s port %"PRIu16" "
+           "set %s pref %u beat %s losslimit %u%% rate %s tx %s rx %s\n",
+            res->tun_name, local,
             remote, gt_get_port(&res->path.conf.remote),
             state, res->path.conf.pref, beat,
             res->path.conf.loss_limit * 100U / 255U,
             res->path.conf.fixed_rate ? "fixed" : "auto",
-            tx, rx, res->path.conf.mark);
+            tx, rx);
 }
 
 static int
@@ -125,8 +125,7 @@ gt_path_status(int fd, enum gt_path_show show)
         }
 
         gt_toaddr(tmp, sizeof(tmp), &res.path.conf.local);
-        gt_path_print(&hdr[local ], i, "%s.%"PRIu16, tmp,
-                      gt_get_port(&res.path.conf.local));
+        gt_path_print(&hdr[local ], i, "%s", tmp);
 
         gt_toaddr(tmp, sizeof(tmp), &res.path.conf.remote);
         gt_path_print(&hdr[remote], i, "%s.%"PRIu16, tmp,
@@ -213,7 +212,6 @@ gt_path(int argc, char **argv, void *data)
     struct argz_ull beat = {.suffix = argz_time_suffix};
     struct argz_ull pref = {.max = 0xFF >> 1};
     struct argz_ull loss = {.max = 100, .suffix = gt_argz_percent_suffix};
-    struct argz_ull mark = {0};
 
     struct argz setz[] = {
         {"up",        "Enable path",                .grp = 2},
@@ -222,7 +220,6 @@ gt_path(int argc, char **argv, void *data)
         {"beat",      "Internal beat rate", argz_ull,  &beat},
         {"pref",      "Path preference",    argz_ull,  &pref},
         {"losslimit", "Disable lossy path", argz_ull,  &loss},
-        {"mark",      "Routing mark",       argz_ull,  &mark},
         {0}};
 
     struct argz showz[] = {
@@ -241,24 +238,19 @@ gt_path(int argc, char **argv, void *data)
         {"to",   "Select path by remote addr", gt_argz_addr,   &remote},
         {"set",  "Change path properties",     argz,  &setz,  .grp = 1},
         {"show", "Show path status",           argz, &showz,  .grp = 1},
-        {"up",        "Enable path",                .grp = 2},
-        {"down",      "Disable path",               .grp = 2},
-        {"rate",      "Rate limit properties",  argz, &ratez},
-        {"beat",      "Internal beat rate", argz_ull,  &beat},
-        {"pref",      "Path preference",    argz_ull,  &pref},
-        {"losslimit", "Disable lossy path", argz_ull,  &loss},
-        {"mark",      "Routing mark",       argz_ull,  &mark},
         {0}};
 
     int a = 1;
     while (a < argc) {
-        int ret = argz(argc - a + 1, argv + a - 1, z);
+        int argc_before = argc - a + 1;
+        int ret = argz(argc_before, argv + a - 1, z);
         if (ret < 0) return ret;
-        int pos = a + (argc - a + 1) - ret;
-        if (pos > a) {
-            a = pos;
+
+        if (ret < argc_before - 1) {
+            a = argc - ret;
             continue;
         }
+
         if (!strcmp(argv[a], "up")) {
             z[3].set = 1;
             setz[0].set = 1;
@@ -274,7 +266,7 @@ gt_path(int argc, char **argv, void *data)
             local.sock.sa.sa_family = AF_INET6;
             a++;
         } else {
-            return ret;
+            a++;
         }
     }
 
@@ -286,9 +278,7 @@ gt_path(int argc, char **argv, void *data)
     }
     int ret = 0;
 
-    if (argz_is_set(z, "set") || argz_is_set(z, "up") || argz_is_set(z, "down") ||
-        argz_is_set(z, "rate") || argz_is_set(z, "beat") || argz_is_set(z, "pref") ||
-        argz_is_set(z, "losslimit")) {
+    if (argz_is_set(z, "set")) {
         struct ctl_msg req = {
             .type = CTL_PATH_CONF,
             .path.conf = {
@@ -298,17 +288,16 @@ gt_path(int argc, char **argv, void *data)
                 .tx_max_rate = tx.value,
                 .rx_max_rate = rx.value,
                 .beat        = beat.value,
-                .pref        = (argz_is_set(setz, "pref") || argz_is_set(z, "pref"))
+                .pref        = argz_is_set(setz, "pref")
                              ? (pref.value << 1) | 1 : 0,
                 .loss_limit  = loss.value * 255 / 100,
-                .mark        = mark.value,
             },
         }, res = {0};
 
-        if (argz_is_set(setz, "up") || argz_is_set(z, "up"))
+        if (argz_is_set(setz, "up"))
             req.path.conf.state = MUD_UP;
 
-        if (argz_is_set(setz, "down") || argz_is_set(z, "down"))
+        if (argz_is_set(setz, "down"))
             req.path.conf.state = MUD_DOWN;
 
         if (argz_is_set(ratez, "fixed"))

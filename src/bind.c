@@ -99,7 +99,6 @@ gt_bind(int argc, char **argv, void *data)
         },
     };
     struct gt_argz_addr remote = local;
-    struct argz_ull mark = {0};
 
     struct argz z[] = {
         {"dev",     "Tunnel device",                  argz_str,      &dev},
@@ -108,18 +107,19 @@ gt_bind(int argc, char **argv, void *data)
         {"to",      "Address and port to connect", gt_argz_addr,  &remote},
         {"persist", "Keep the tunnel device after exiting"               },
         {"chacha" , "Force fallback cipher"                              },
-        {"mark",    "Routing mark",                   argz_ull,      &mark},
         {0}};
 
     int a = 1;
     while (a < argc) {
-        int ret = argz(argc - a + 1, argv + a - 1, z);
+        int argc_before = argc - a + 1;
+        int ret = argz(argc_before, argv + a - 1, z);
         if (ret < 0) return ret;
-        int pos = a + (argc - a + 1) - ret;
-        if (pos > a) {
-            a = pos;
+
+        if (ret < argc_before - 1) {
+            a = argc - ret;
             continue;
         }
+
         if (inet_pton(AF_INET, argv[a], &remote.sock.sin.sin_addr) == 1) {
             remote.sock.sa.sa_family = AF_INET;
             a++;
@@ -143,7 +143,7 @@ gt_bind(int argc, char **argv, void *data)
                 }
             }
         } else {
-            return ret;
+            a++;
         }
     }
 
@@ -295,7 +295,6 @@ gt_bind(int argc, char **argv, void *data)
                     res.status.pid = pid;
                     res.status.mtu = mtu;
                     res.status.cipher = !aes;
-                    res.status.mark = (uint32_t)mark.value;
                     res.status.local  = local.sock;
                     res.status.remote = remote.sock;
                     break;
