@@ -109,10 +109,36 @@ gt_bind(int argc, char **argv, void *data)
         {"chacha" , "Force fallback cipher"                              },
         {0}};
 
-    int err = argz(argc, argv, z);
+    int a = 1;
+    while (a < argc) {
+        int ret = argz(argc - a + 1, argv + a - 1, z);
 
-    if (err)
-        return err;
+        if (ret < 0)
+            return ret;
+
+        if (ret == 0)
+            break;
+
+        int pos = argc - ret;
+
+        if (inet_pton(AF_INET, argv[pos], &remote.sock.sin.sin_addr) == 1) {
+            remote.sock.sa.sa_family = AF_INET;
+        } else if (inet_pton(AF_INET6, argv[pos], &remote.sock.sin6.sin6_addr) == 1) {
+            remote.sock.sa.sa_family = AF_INET6;
+        } else {
+            return ret;
+        }
+        a = pos + 1;
+
+        if (a < argc) {
+            char *endptr;
+            unsigned long port = strtoul(argv[a], &endptr, 10);
+            if (*endptr == '\0' && port > 0 && port <= 65535) {
+                gt_set_port(&remote.sock, (uint16_t)port);
+                a++;
+            }
+        }
+    }
 
     if (EMPTY(keyfile.path)) {
         gt_log("a keyfile is needed!\n");

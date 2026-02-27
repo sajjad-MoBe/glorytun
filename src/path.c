@@ -238,12 +238,41 @@ gt_path(int argc, char **argv, void *data)
         {"to",   "Select path by remote addr", gt_argz_addr,   &remote},
         {"set",  "Change path properties",     argz,  &setz,  .grp = 1},
         {"show", "Show path status",           argz, &showz,  .grp = 1},
+        {"up",        "Enable path",                .grp = 2},
+        {"down",      "Disable path",               .grp = 2},
+        {"rate",      "Rate limit properties",  argz, &ratez},
+        {"beat",      "Internal beat rate", argz_ull,  &beat},
+        {"pref",      "Path preference",    argz_ull,  &pref},
+        {"losslimit", "Disable lossy path", argz_ull,  &loss},
         {0}};
 
-    int err = argz(argc, argv, z);
+    int a = 1;
+    while (a < argc) {
+        int ret = argz(argc - a + 1, argv + a - 1, z);
 
-    if (err)
-        return err;
+        if (ret < 0)
+            return ret;
+
+        if (ret == 0)
+            break;
+
+        int pos = argc - ret;
+
+        if (!strcmp(argv[pos], "up")) {
+            z[6].set = 1;
+            z[3].set = 1;
+        } else if (!strcmp(argv[pos], "down")) {
+            z[7].set = 1;
+            z[3].set = 1;
+        } else if (inet_pton(AF_INET, argv[pos], &remote.sock.sin.sin_addr) == 1) {
+            remote.sock.sa.sa_family = AF_INET;
+        } else if (inet_pton(AF_INET6, argv[pos], &remote.sock.sin6.sin6_addr) == 1) {
+            remote.sock.sa.sa_family = AF_INET6;
+        } else {
+            return ret;
+        }
+        a = pos + 1;
+    }
 
     int fd = ctl_connect(dev);
 

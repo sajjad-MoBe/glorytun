@@ -62,6 +62,8 @@ Run Glorytun on the server (replace `SERVER_IP` with your public IP):
 ```bash
 ./glorytun bind SERVER_IP 55055 dev tun0 keyfile gt.key chacha
 ```
+Note: Arguments like `SERVER_IP` and `55055` are positional. You can also use `from addr SERVER_IP port 55055`.
+
 Configure the tunnel interface and NAT:
 ```bash
 ifconfig tun0 10.0.1.1 pointopoint 10.0.1.2 up
@@ -74,7 +76,7 @@ iptables -I FORWARD -i tun0 -o eth0 -j ACCEPT
 ### 3. Client Setup
 Run Glorytun on the client:
 ```bash
-./glorytun bind 0.0.0.0 to SERVER_IP 55055 dev tun0 keyfile gt.key chacha
+./glorytun bind SERVER_IP 55055 dev tun0 keyfile gt.key chacha
 ```
 Configure the tunnel interface:
 ```bash
