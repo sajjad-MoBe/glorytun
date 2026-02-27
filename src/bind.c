@@ -112,31 +112,36 @@ gt_bind(int argc, char **argv, void *data)
     int a = 1;
     while (a < argc) {
         int ret = argz(argc - a + 1, argv + a - 1, z);
-
-        if (ret < 0)
-            return ret;
-
-        if (ret == 0)
-            break;
-
+        if (ret < 0) return ret;
         int pos = argc - ret;
-
-        if (inet_pton(AF_INET, argv[pos], &remote.sock.sin.sin_addr) == 1) {
+        if (pos > a) {
+            a = pos;
+            continue;
+        }
+        if (inet_pton(AF_INET, argv[a], &remote.sock.sin.sin_addr) == 1) {
             remote.sock.sa.sa_family = AF_INET;
-        } else if (inet_pton(AF_INET6, argv[pos], &remote.sock.sin6.sin6_addr) == 1) {
+            a++;
+            if (a < argc) {
+                char *endptr;
+                unsigned long port = strtoul(argv[a], &endptr, 10);
+                if (*endptr == '\0' && port > 0 && port <= 65535) {
+                    gt_set_port(&remote.sock, (uint16_t)port);
+                    a++;
+                }
+            }
+        } else if (inet_pton(AF_INET6, argv[a], &remote.sock.sin6.sin6_addr) == 1) {
             remote.sock.sa.sa_family = AF_INET6;
+            a++;
+            if (a < argc) {
+                char *endptr;
+                unsigned long port = strtoul(argv[a], &endptr, 10);
+                if (*endptr == '\0' && port > 0 && port <= 65535) {
+                    gt_set_port(&remote.sock, (uint16_t)port);
+                    a++;
+                }
+            }
         } else {
             return ret;
-        }
-        a = pos + 1;
-
-        if (a < argc) {
-            char *endptr;
-            unsigned long port = strtoul(argv[a], &endptr, 10);
-            if (*endptr == '\0' && port > 0 && port <= 65535) {
-                gt_set_port(&remote.sock, (uint16_t)port);
-                a++;
-            }
         }
     }
 

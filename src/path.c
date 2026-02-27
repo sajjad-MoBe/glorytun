@@ -249,29 +249,29 @@ gt_path(int argc, char **argv, void *data)
     int a = 1;
     while (a < argc) {
         int ret = argz(argc - a + 1, argv + a - 1, z);
-
-        if (ret < 0)
-            return ret;
-
-        if (ret == 0)
-            break;
-
+        if (ret < 0) return ret;
         int pos = argc - ret;
-
-        if (!strcmp(argv[pos], "up")) {
+        if (pos > a) {
+            a = pos;
+            continue;
+        }
+        if (!strcmp(argv[a], "up")) {
             z[6].set = 1;
             z[3].set = 1;
-        } else if (!strcmp(argv[pos], "down")) {
+            a++;
+        } else if (!strcmp(argv[a], "down")) {
             z[7].set = 1;
             z[3].set = 1;
-        } else if (inet_pton(AF_INET, argv[pos], &remote.sock.sin.sin_addr) == 1) {
+            a++;
+        } else if (inet_pton(AF_INET, argv[a], &remote.sock.sin.sin_addr) == 1) {
             remote.sock.sa.sa_family = AF_INET;
-        } else if (inet_pton(AF_INET6, argv[pos], &remote.sock.sin6.sin6_addr) == 1) {
+            a++;
+        } else if (inet_pton(AF_INET6, argv[a], &remote.sock.sin6.sin6_addr) == 1) {
             remote.sock.sa.sa_family = AF_INET6;
+            a++;
         } else {
             return ret;
         }
-        a = pos + 1;
     }
 
     int fd = ctl_connect(dev);
@@ -282,7 +282,9 @@ gt_path(int argc, char **argv, void *data)
     }
     int ret = 0;
 
-    if (argz_is_set(z, "set")) {
+    if (argz_is_set(z, "set") || argz_is_set(z, "up") || argz_is_set(z, "down") ||
+        argz_is_set(z, "rate") || argz_is_set(z, "beat") || argz_is_set(z, "pref") ||
+        argz_is_set(z, "losslimit")) {
         struct ctl_msg req = {
             .type = CTL_PATH_CONF,
             .path.conf = {
@@ -292,16 +294,16 @@ gt_path(int argc, char **argv, void *data)
                 .tx_max_rate = tx.value,
                 .rx_max_rate = rx.value,
                 .beat        = beat.value,
-                .pref        = argz_is_set(setz, "pref")
+                .pref        = (argz_is_set(setz, "pref") || argz_is_set(z, "pref"))
                              ? (pref.value << 1) | 1 : 0,
                 .loss_limit  = loss.value * 255 / 100,
             },
         }, res = {0};
 
-        if (argz_is_set(setz, "up"))
+        if (argz_is_set(setz, "up") || argz_is_set(z, "up"))
             req.path.conf.state = MUD_UP;
 
-        if (argz_is_set(setz, "down"))
+        if (argz_is_set(setz, "down") || argz_is_set(z, "down"))
             req.path.conf.state = MUD_DOWN;
 
         if (argz_is_set(ratez, "fixed"))
