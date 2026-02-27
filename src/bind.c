@@ -115,7 +115,7 @@ gt_bind(int argc, char **argv, void *data)
     while (a < argc) {
         int ret = argz(argc - a + 1, argv + a - 1, z);
         if (ret < 0) return ret;
-        int pos = argc - ret;
+        int pos = a + (argc - a + 1) - ret;
         if (pos > a) {
             a = pos;
             continue;
