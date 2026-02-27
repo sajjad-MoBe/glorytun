@@ -53,12 +53,14 @@ gt_show_status(int fd)
            "remote %s.%"PRIu16"\n"
            "pid    %li\n"
            "mtu    %zu\n"
+           "mark   %"PRIu32"\n"
            "cipher %s\n",
             res.tun_name,
             local, gt_get_port(&res.status.local),
             remote, gt_get_port(&res.status.remote),
             res.status.pid,
             res.status.mtu,
+            res.status.mark,
             GT_CIPHER(res.status.cipher));
 
     return 0;

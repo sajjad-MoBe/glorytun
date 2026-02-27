@@ -55,14 +55,14 @@ gt_path_conf(struct ctl_msg *res)
         gt_torate(rx, sizeof(rx), res->path.conf.rx_max_rate * 8))
         return;
 
-    printf("path dev %s addr %s to addr %s port %"PRIu16" "
-           "set %s pref %u beat %s losslimit %u%% rate %s tx %s rx %s\n",
-            res->tun_name, local,
+    printf("path dev %s addr %s port %"PRIu16" to addr %s port %"PRIu16" "
+           "set %s pref %u beat %s losslimit %u%% rate %s tx %s rx %s mark %"PRIu32"\n",
+            res->tun_name, local, gt_get_port(&res->path.conf.local),
             remote, gt_get_port(&res->path.conf.remote),
             state, res->path.conf.pref, beat,
             res->path.conf.loss_limit * 100U / 255U,
             res->path.conf.fixed_rate ? "fixed" : "auto",
-            tx, rx);
+            tx, rx, res->path.conf.mark);
 }
 
 static int
@@ -125,7 +125,8 @@ gt_path_status(int fd, enum gt_path_show show)
         }
 
         gt_toaddr(tmp, sizeof(tmp), &res.path.conf.local);
-        gt_path_print(&hdr[local ], i, "%s", tmp);
+        gt_path_print(&hdr[local ], i, "%s.%"PRIu16, tmp,
+                      gt_get_port(&res.path.conf.local));
 
         gt_toaddr(tmp, sizeof(tmp), &res.path.conf.remote);
         gt_path_print(&hdr[remote], i, "%s.%"PRIu16, tmp,
@@ -212,6 +213,7 @@ gt_path(int argc, char **argv, void *data)
     struct argz_ull beat = {.suffix = argz_time_suffix};
     struct argz_ull pref = {.max = 0xFF >> 1};
     struct argz_ull loss = {.max = 100, .suffix = gt_argz_percent_suffix};
+    struct argz_ull mark = {0};
 
     struct argz setz[] = {
         {"up",        "Enable path",                .grp = 2},
@@ -220,6 +222,7 @@ gt_path(int argc, char **argv, void *data)
         {"beat",      "Internal beat rate", argz_ull,  &beat},
         {"pref",      "Path preference",    argz_ull,  &pref},
         {"losslimit", "Disable lossy path", argz_ull,  &loss},
+        {"mark",      "Routing mark",       argz_ull,  &mark},
         {0}};
 
     struct argz showz[] = {
@@ -244,6 +247,7 @@ gt_path(int argc, char **argv, void *data)
         {"beat",      "Internal beat rate", argz_ull,  &beat},
         {"pref",      "Path preference",    argz_ull,  &pref},
         {"losslimit", "Disable lossy path", argz_ull,  &loss},
+        {"mark",      "Routing mark",       argz_ull,  &mark},
         {0}};
 
     int a = 1;
@@ -297,6 +301,7 @@ gt_path(int argc, char **argv, void *data)
                 .pref        = (argz_is_set(setz, "pref") || argz_is_set(z, "pref"))
                              ? (pref.value << 1) | 1 : 0,
                 .loss_limit  = loss.value * 255 / 100,
+                .mark        = mark.value,
             },
         }, res = {0};
 

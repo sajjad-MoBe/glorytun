@@ -84,12 +84,29 @@ ifconfig tun0 10.0.1.2 pointopoint 10.0.1.1 up
 ```
 
 ### 4. Adding Multipath Paths
-To add additional paths (e.g., using different gateways or local IPs), use the `path` command:
+To add additional paths and aggregate bandwidth, use the `path` command. This version supports `mark` for policy routing, which is often required to force traffic through specific gateways:
+
 ```bash
-./glorytun path up 192.168.70.2 rate tx 50mbit rx 50mbit
-./glorytun path up 192.168.70.3 rate tx 50mbit rx 50mbit
+# Add first path and mark it 10
+./glorytun path up 192.168.70.2 mark 10 rate tx 50mbit rx 50mbit
+
+# Add second path and mark it 20
+./glorytun path up 192.168.70.3 mark 20 rate tx 50mbit rx 50mbit
 ```
-The version included in this repository supports `IP_FREEBIND`, allowing you to bind to non-local IP addresses for these paths if they are reachable via your routing table.
+
+Then, use Linux policy routing to ensure packets with these marks use the correct gateways:
+
+```bash
+# Setup for path 1 (192.168.70.2)
+ip rule add fwmark 10 table 100
+ip route add default via 192.168.70.2 table 100
+
+# Setup for path 2 (192.168.70.3)
+ip rule add fwmark 20 table 200
+ip route add default via 192.168.70.3 table 200
+```
+
+The version included in this repository supports `IP_FREEBIND`, allowing you to use these IP addresses even if they are not assigned to local interfaces.
 
 ### 5. Status and Monitoring
 Check the status of the tunnel and paths:

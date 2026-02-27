@@ -26,6 +26,7 @@ struct ctl_msg {
             long pid;
             size_t mtu;
             int cipher;
+            uint32_t mark;
             union mud_sockaddr local;
             union mud_sockaddr remote;
         } status;
