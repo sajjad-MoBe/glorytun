@@ -324,6 +324,8 @@ gt_bind(int argc, char **argv, void *data)
                     } else {
                         req.path.conf.remote = remote.sock;
                     }
+                    if (!req.path.conf.local.sa.sa_family)
+                        req.path.conf.local.sa.sa_family = req.path.conf.remote.sa.sa_family;
                     if (mud_set_path(mud, &req.path.conf))
                         res.ret = errno;
                     res.path.conf = req.path.conf;

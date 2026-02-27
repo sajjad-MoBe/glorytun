@@ -256,18 +256,18 @@ gt_path(int argc, char **argv, void *data)
             continue;
         }
         if (!strcmp(argv[a], "up")) {
-            z[6].set = 1;
             z[3].set = 1;
+            setz[0].set = 1;
             a++;
         } else if (!strcmp(argv[a], "down")) {
-            z[7].set = 1;
             z[3].set = 1;
+            setz[1].set = 1;
             a++;
-        } else if (inet_pton(AF_INET, argv[a], &remote.sock.sin.sin_addr) == 1) {
-            remote.sock.sa.sa_family = AF_INET;
+        } else if (inet_pton(AF_INET, argv[a], &local.sock.sin.sin_addr) == 1) {
+            local.sock.sa.sa_family = AF_INET;
             a++;
-        } else if (inet_pton(AF_INET6, argv[a], &remote.sock.sin6.sin6_addr) == 1) {
-            remote.sock.sa.sa_family = AF_INET6;
+        } else if (inet_pton(AF_INET6, argv[a], &local.sock.sin6.sin6_addr) == 1) {
+            local.sock.sa.sa_family = AF_INET6;
             a++;
         } else {
             return ret;
