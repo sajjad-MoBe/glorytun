@@ -109,10 +109,43 @@ gt_bind(int argc, char **argv, void *data)
         {"chacha" , "Force fallback cipher"                              },
         {0}};
 
-    int err = argz(argc, argv, z);
+    int a = 1;
+    while (a < argc) {
+        int argc_before = argc - a + 1;
+        int ret = argz(argc_before, argv + a - 1, z);
+        if (ret < 0) return ret;
 
-    if (err)
-        return err;
+        if (ret < argc_before - 1) {
+            a = argc - ret;
+            continue;
+        }
+
+        if (inet_pton(AF_INET, argv[a], &remote.sock.sin.sin_addr) == 1) {
+            remote.sock.sa.sa_family = AF_INET;
+            a++;
+            if (a < argc) {
+                char *endptr;
+                unsigned long port = strtoul(argv[a], &endptr, 10);
+                if (*endptr == '\0' && port > 0 && port <= 65535) {
+                    gt_set_port(&remote.sock, (uint16_t)port);
+                    a++;
+                }
+            }
+        } else if (inet_pton(AF_INET6, argv[a], &remote.sock.sin6.sin6_addr) == 1) {
+            remote.sock.sa.sa_family = AF_INET6;
+            a++;
+            if (a < argc) {
+                char *endptr;
+                unsigned long port = strtoul(argv[a], &endptr, 10);
+                if (*endptr == '\0' && port > 0 && port <= 65535) {
+                    gt_set_port(&remote.sock, (uint16_t)port);
+                    a++;
+                }
+            }
+        } else {
+            a++;
+        }
+    }
 
     if (EMPTY(keyfile.path)) {
         gt_log("a keyfile is needed!\n");
@@ -293,6 +326,8 @@ gt_bind(int argc, char **argv, void *data)
                     } else {
                         req.path.conf.remote = remote.sock;
                     }
+                    if (!req.path.conf.local.sa.sa_family)
+                        req.path.conf.local.sa.sa_family = req.path.conf.remote.sa.sa_family;
                     if (mud_set_path(mud, &req.path.conf))
                         res.ret = errno;
                     res.path.conf = req.path.conf;

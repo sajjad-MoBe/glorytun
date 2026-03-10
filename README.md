@@ -48,6 +48,73 @@ The key features of Glorytun come directly from [mud](https://github.com/angt/mu
    It doesn't rely on Next-hop MTU to avoid ICMP black holes.
    In asymmetric situations the minimum MTU is selected.
 
+## Quick Start
+
+### 1. Generate a Key
+On either the server or client, generate a secret key:
+```bash
+./glorytun keygen > gt.key
+```
+Copy this `gt.key` to both machines.
+
+### 2. Server Setup
+Run Glorytun on the server (replace `SERVER_IP` with your public IP):
+```bash
+./glorytun bind SERVER_IP 55055 dev tun0 keyfile gt.key chacha
+```
+Note: Arguments like `SERVER_IP` and `55055` are positional. You can also use `from addr SERVER_IP port 55055`.
+
+Configure the tunnel interface and NAT:
+```bash
+ifconfig tun0 10.0.1.1 pointopoint 10.0.1.2 up
+iptables -t nat -I POSTROUTING -s 10.0.1.0/24 -o eth0 -j MASQUERADE
+iptables -I INPUT -i tun0 -j ACCEPT
+iptables -I FORWARD -i eth0 -o tun0 -j ACCEPT
+iptables -I FORWARD -i tun0 -o eth0 -j ACCEPT
+```
+
+### 3. Client Setup
+Run Glorytun on the client:
+```bash
+./glorytun bind SERVER_IP 55055 dev tun0 keyfile gt.key chacha
+```
+Configure the tunnel interface:
+```bash
+ifconfig tun0 10.0.1.2 pointopoint 10.0.1.1 up
+```
+
+### 4. Adding Multipath Paths
+To add additional paths and aggregate bandwidth, use the `path` command. This version supports `mark` for policy routing, which is often required to force traffic through specific gateways:
+
+```bash
+# Add first path and mark it 10
+./glorytun path up 192.168.70.2 mark 10 rate tx 50mbit rx 50mbit
+
+# Add second path and mark it 20
+./glorytun path up 192.168.70.3 mark 20 rate tx 50mbit rx 50mbit
+```
+
+Then, use Linux policy routing to ensure packets with these marks use the correct gateways:
+
+```bash
+# Setup for path 1 (192.168.70.2)
+ip rule add fwmark 10 table 100
+ip route add default via 192.168.70.2 table 100
+
+# Setup for path 2 (192.168.70.3)
+ip rule add fwmark 20 table 200
+ip route add default via 192.168.70.3 table 200
+```
+
+The version included in this repository supports `IP_FREEBIND`, allowing you to use these IP addresses even if they are not assigned to local interfaces.
+
+### 5. Status and Monitoring
+Check the status of the tunnel and paths:
+```bash
+./glorytun show
+./glorytun path show
+```
+
 ## Compatibility
 
 Glorytun only depends on [libsodium](https://github.com/jedisct1/libsodium)

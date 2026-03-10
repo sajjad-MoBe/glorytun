@@ -240,10 +240,35 @@ gt_path(int argc, char **argv, void *data)
         {"show", "Show path status",           argz, &showz,  .grp = 1},
         {0}};
 
-    int err = argz(argc, argv, z);
+    int a = 1;
+    while (a < argc) {
+        int argc_before = argc - a + 1;
+        int ret = argz(argc_before, argv + a - 1, z);
+        if (ret < 0) return ret;
 
-    if (err)
-        return err;
+        if (ret < argc_before - 1) {
+            a = argc - ret;
+            continue;
+        }
+
+        if (!strcmp(argv[a], "up")) {
+            z[3].set = 1;
+            setz[0].set = 1;
+            a++;
+        } else if (!strcmp(argv[a], "down")) {
+            z[3].set = 1;
+            setz[1].set = 1;
+            a++;
+        } else if (inet_pton(AF_INET, argv[a], &local.sock.sin.sin_addr) == 1) {
+            local.sock.sa.sa_family = AF_INET;
+            a++;
+        } else if (inet_pton(AF_INET6, argv[a], &local.sock.sin6.sin6_addr) == 1) {
+            local.sock.sa.sa_family = AF_INET6;
+            a++;
+        } else {
+            a++;
+        }
+    }
 
     int fd = ctl_connect(dev);
 
